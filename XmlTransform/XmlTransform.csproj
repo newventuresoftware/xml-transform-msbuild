@@ -68,6 +68,11 @@
   <ItemGroup>
     <Content Include="packages.config" />
     <XmlTransform Include="rewrite.config" />
+    <XmlTransform Include="folder\other.xml" />
+    <None Include="folder\other.Debug.xml">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="folder\other.Release.xml" />
     <None Include="rewrite.Debug.config" />
     <None Include="rewrite.Release.config" />
     <XmlTransform Include="appconfig.config" />

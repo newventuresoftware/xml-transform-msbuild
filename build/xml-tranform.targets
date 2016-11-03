@@ -49,6 +49,8 @@
       <Content Include="%(XmlTransformInfo.OutputFilePath)" />
     </ItemGroup>
 
+    <Message Text="FINAL: @(Content)" Importance="high"/>
+
   </Target>
 
 </Project>
