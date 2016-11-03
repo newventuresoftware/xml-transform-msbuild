@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <PropertyGroup>
+
+    <BuildDependsOn>
+        PrepareXMLTransforms;
+        ExecuteXMLTransforms;
+        $(BuildDependsOn);
+    </BuildDependsOn>
+
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Enable Build Action "XmlTransform" in Visual Studio  -->
+    <AvailableItemName Include="XmlTransform" />
+  </ItemGroup>
+
+  <Target Name="PrepareXMLTransforms">
+
+    <Message Text="Preparing files for XMLTransform: @(XmlTransform)" Importance="high"/>
+
+    <ItemGroup>
+      <!-- Generate paths to transform files and output files  -->
+      <XmlTransformInfo Include="@(XmlTransform)">
+        <TransformFilePath>%(RelativeDir)%(Filename).$(Configuration)%(Extension)</TransformFilePath>
+        <OutputFilePath>%(RelativeDir)%(Filename).transformed%(Extension)</OutputFilePath>
+      </XmlTransformInfo>
+    </ItemGroup>
+
+    <Message Text="XMLTransform metadata: Source file: @(XmlTransformInfo); Transform file: %(TransformFilePath); Output file: %(OutputFilePath)" Importance="high"/>
+
+    <!-- Generate error if any of the transform files for the current configuration is missing  -->
+    <Error Text="XML transformation file %(XmlTransformInfo.TransformFilePath) does not exist." 
+          Condition="!Exists('%(XmlTransformInfo.TransformFilePath)')" />
+
+  </Target>
+
+  <Target Name="ExecuteXMLTransforms">
+
+    <!-- Perform actual transform -->
+    <TransformXml 
+        Source="@(XmlTransformInfo)" 
+        Transform="%(TransformFilePath)" 
+        Destination="%(OutputFilePath)" />
+
+    <ItemGroup>
+      <!-- Include output files as "Content" so that output files are deployed when publishing -->
+      <Content Include="%(XmlTransformInfo.OutputFilePath)" />
+    </ItemGroup>
+
+  </Target>
+
+</Project>
