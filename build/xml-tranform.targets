@@ -3,20 +3,32 @@
 
   <PropertyGroup>
 
-    <BuildDependsOn>
-        PrepareXMLTransforms;
-        ExecuteXMLTransforms;
-        $(BuildDependsOn);
-    </BuildDependsOn>
+    <!-- Plug into the Publish pipeline  -->
+    <OnAfterPipelineCollectFilesPhase>
+      XmlTransform;
+      $(OnAfterPipelineCollectFilesPhase);
+    </OnAfterPipelineCollectFilesPhase>
+
+    <XmlTransformDependsOn>
+        XMLTransformInit;
+        XMLTransformPrepareTemp;
+        XMLTransformExecute;
+        XMLTransformAddForPackaging;
+    </XmlTransformDependsOn>
+
+    <XmlTransformTempPath>$(IntermediateOutputPath)XmlTransform\</XmlTransformTempPath>
 
   </PropertyGroup>
 
   <ItemGroup>
     <!-- Enable Build Action "XmlTransform" in Visual Studio  -->
-    <AvailableItemName Include="XmlTransform" />
+    <AvailableItemName Include="XmlTransform"/>
   </ItemGroup>
 
-  <Target Name="PrepareXMLTransforms">
+  <Target Name="XmlTransform" DependsOnTargets="$(XmlTransformDependsOn)">
+  </Target>
+
+  <Target Name="XMLTransformInit">
 
     <Message Text="Preparing files for XMLTransform: @(XmlTransform)" Importance="high"/>
 
@@ -24,11 +36,11 @@
       <!-- Generate paths to transform files and output files  -->
       <XmlTransformInfo Include="@(XmlTransform)">
         <TransformFilePath>%(RelativeDir)%(Filename).$(Configuration)%(Extension)</TransformFilePath>
-        <OutputFilePath>%(RelativeDir)%(Filename).transformed%(Extension)</OutputFilePath>
+        <TempFileDir>$(XmlTransformTempPath)transformed\%(RelativeDir)</TempFileDir>
+        <TempFilePath>$(XmlTransformTempPath)transformed\%(RelativeDir)%(Filename)%(Extension)</TempFilePath>
+        <RelativePath>%(RelativeDir)%(Filename)%(Extension)</RelativePath>
       </XmlTransformInfo>
     </ItemGroup>
-
-    <Message Text="XMLTransform metadata: Source file: @(XmlTransformInfo); Transform file: %(TransformFilePath); Output file: %(OutputFilePath)" Importance="high"/>
 
     <!-- Generate error if any of the transform files for the current configuration is missing  -->
     <Error Text="XML transformation file %(XmlTransformInfo.TransformFilePath) does not exist." 
@@ -36,20 +48,39 @@
 
   </Target>
 
-  <Target Name="ExecuteXMLTransforms">
+  <Target Name="XMLTransformPrepareTemp">
+
+    <PropertyGroup>
+      <PrepareXMLTransformsOutputDirectories>@(_WebConfigsToTransformOuputs->'%(RootDir)%(Directory)')</PrepareXMLTransformsOutputDirectories>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <_WebConfigsToTransformOuputsDirectories Include="$(_WebConfigsToTransformOuputsDirectories)" />
+    </ItemGroup>
+
+    <RemoveDir Directories="$(XmlTransformTempPath)"/>
+    <MakeDir Directories="%(XmlTransformInfo.TempFileDir)"/>
+
+  </Target>
+
+  <Target Name="XMLTransformExecute">
 
     <!-- Perform actual transform -->
     <TransformXml 
         Source="@(XmlTransformInfo)" 
         Transform="%(TransformFilePath)" 
-        Destination="%(OutputFilePath)" />
+        Destination="%(TempFilePath)" />
+
+  </Target>
+
+  <Target Name="XMLTransformAddForPackaging">
 
     <ItemGroup>
-      <!-- Include output files as "Content" so that output files are deployed when publishing -->
-      <Content Include="%(XmlTransformInfo.OutputFilePath)" />
+      <TransformedFilesToInclude Include="%(XmlTransformInfo.TempFilePath)">
+        <DestinationRelativePath>%(XmlTransformInfo.RelativePath)</DestinationRelativePath>
+      </TransformedFilesToInclude>
+      <FilesForPackagingFromProject Include="@(TransformedFilesToInclude->'%(FullPath)')" KeepMetadata="DestinationRelativePath"/>
     </ItemGroup>
-
-    <Message Text="FINAL: @(Content)" Importance="high"/>
 
   </Target>
 
